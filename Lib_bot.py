@@ -212,6 +212,13 @@ async def voice_processing(message):
         await bot.send_message(message.chat.id, data[0].upper() + data[1::], reply_markup=nnkl)
 
 
+@dp.callback_query_handler(lambda callback_query: callback_query.data and callback_query.data.startswith('daa'))
+async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
+    await bot.edit_message_text('aklsdfj;laksdj',
+                                callback_query.message.chat.id,
+                                callback_query.message.message_id)
+
+
 @dp.callback_query_handler(lambda callback_query: callback_query.data and callback_query.data.startswith('tradefinish'))
 async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
     trade_id = callback_query.data.split('_')[1]
@@ -228,8 +235,8 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
         admin = session.query(User).filter(User.role == 'admin').first().tg_id
         main_menu_button1 = InlineKeyboardButton('✅ Принять книгу', callback_data=f'tradefinish_{trade_id}_yes')
         main_menu_button2 = InlineKeyboardButton('❌ Отказать', callback_data=f'tradefinish_{trade_id}_no')
-        main_menu = InlineKeyboardMarkup(row_width=2, resize_keyboard=True).add(main_menu_button1[user.lang],
-                                                                                main_menu_button2[user.lang])
+        main_menu = InlineKeyboardMarkup(row_width=2, resize_keyboard=True).add(main_menu_button1,
+                                                                                main_menu_button2)
         await bot.send_message(admin,
                                f'Пользователь {user.name} возвращает книгу {trade_info.book_name}',
                                reply_markup=main_menu)
@@ -243,15 +250,17 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
             trade_info.status = "worked"
             session.commit()
             user = session.query(User).filter(User.tg_id == trade_info.user_id).first()
-            c = user.xp
-            user.xp = int(user.xp) + 5
+            # c = user.xp
+            # user.xp = int(user.xp) + 5
             session.add(user)
             session.commit()
-            text = {'rus': f'{user.name}, вы успешно сдали книгу {trade_info.book_name}',
-                    'tat': f'{user.name}, сез китапны тапшырдыгыз {trade_info.book_name}'}
+            text = {'rus': f'{user.name}, вы успешно сдали книгу {trade_info.book_name}\nХотите пройти тест и получить баллы? 😏',
+                    'tat': f'{user.name}, сез китапны тапшырдыгыз {trade_info.book_name}\nТест ясарга һәм баллар алырга телисезме? 😏'}
+            lkjh = InlineKeyboardMarkup(row_width=2).add(InlineKeyboardButton('Да ✅', callback_data='daa'),
+                                                         InlineKeyboardButton('Нет ❌', callback_data='nno'))
             await bot.send_message(user.tg_id,
                                    text[user.lang],
-                                   reply_markup=main_menu)
+                                   reply_markup=lkjh)
             await bot.edit_message_text(f"Пользователь {user.name} успешно сдал книгу {trade_info.book_name}",
                                         callback_query.message.chat.id,
                                         callback_query.message.message_id)
@@ -313,9 +322,10 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
 @dp.callback_query_handler(lambda callback_query: callback_query.data and callback_query.data.startswith('date_choose'))
 async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
     book_id = callback_query.data.split('_')[-1]
+    print(callback_query.data)
     session = create_session()
     book = session.query(Book).filter(Book.book_id == book_id).first()
-    user = session.query(User).filter(User.tg_id == callback_query.message.chat.id)
+    user = session.query(User).filter(User.tg_id == callback_query.message.chat.id).first()
     if book.amount != 0 and book.amount != '0':
         await callback_query.answer('Выберите период в течении которого вы прочитаете книгу ⬇️')
         text = {'rus': '1 день', 'tat': '1 көн'}
@@ -358,7 +368,7 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery, state: F
         user = session.query(User).filter(User.tg_id == callback_query.message.chat.id).first()
         main_menu_button = back[user.lang]
         main_menu = InlineKeyboardMarkup(row_width=1, resize_keyboard=True).add(main_menu_button)
-        text = {'rus': 'f"Ждём подтверждения от библиотекаря. ⏳\nВы будете уведомлены после подтверждения. 🔔️",',
+        text = {'rus': 'Ждём подтверждения от библиотекаря. ⏳\nВы будете уведомлены после подтверждения. 🔔️',
                 'tat': 'Китапханәченең рөхсәтен көтәбез'}
         await bot.edit_message_text(text[user.lang],
                                     callback_query.message.chat.id,
@@ -397,7 +407,7 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
                                      text="Загружаем информацию о задолженности...️")
     duty_id = callback_query.data.split('_')[1]
     session = create_session()
-    user = session.query(User).filter(User.tg_id == callback_query.message.chat.id)
+    user = session.query(User).filter(User.tg_id == callback_query.message.chat.id).first()
     duty_info = session.query(trade).filter(trade.trade_id == duty_id).first()
     duties = InlineKeyboardMarkup(row_width=2)
     btnn1 = {'rus': InlineKeyboardButton(f'◀️ Назад', callback_data=f'my_duty'),
@@ -492,7 +502,7 @@ async def main_buttons(callback_query: types.CallbackQuery, state: FSMContext):
             count += 1
             more = {'rus': InlineKeyboardButton('Подробнее 🧐', url=i.link),
                     'tat': InlineKeyboardButton('Тәфсилле 🧐', url=i.link)}
-            take = {'rus': InlineKeyboardButton('🤲🏻 Взять', callback_data=f'date_choose_{i.book_id})'),
+            take = {'rus': InlineKeyboardButton('🤲🏻 Взять', callback_data=f'date_choose_{i.book_id}'),
                     'tat': InlineKeyboardButton('🤲🏻 Алырга', callback_data=f'date_choose_{i.book_id}')}
             hurry = {'rus': InlineKeyboardButton('🚴‍♀️ Поторопить', callback_data=f"date_choose_{i.book_id}"),
                      'tat': InlineKeyboardButton('🚴‍♀️ Ашыктыру', callback_data=f"date_choose_{i.book_id}")}
@@ -531,7 +541,7 @@ async def main_buttons(callback_query: types.CallbackQuery, state: FSMContext):
             count += 1
             more = {'rus': InlineKeyboardButton('Подробнее 🧐', url=i.link),
                     'tat': InlineKeyboardButton('Тәфсилле 🧐', url=i.link)}
-            take = {'rus': InlineKeyboardButton('🤲🏻 Взять', callback_data=f'date_choose_{i.book_id})'),
+            take = {'rus': InlineKeyboardButton('🤲🏻 Взять', callback_data=f'date_choose_{i.book_id}'),
                     'tat': InlineKeyboardButton('🤲🏻 Алырга', callback_data=f'date_choose_{i.book_id}')}
             hurry = {'rus': InlineKeyboardButton('🚴‍♀️ Поторопить', callback_data=f"date_choose_{i.book_id}"),
                      'tat': InlineKeyboardButton('🚴‍♀️ Ашыктыру', callback_data=f"date_choose_{i.book_id}")}
@@ -677,7 +687,7 @@ async def main_buttons(callback_query: types.CallbackQuery, state: FSMContext):
                     count += 1
                     more = {'rus': InlineKeyboardButton('Подробнее 🧐', url=i.link),
                             'tat': InlineKeyboardButton('Тәфсилле 🧐', url=i.link)}
-                    take = {'rus': InlineKeyboardButton('🤲🏻 Взять', callback_data=f'date_choose_{i.book_id})'),
+                    take = {'rus': InlineKeyboardButton('🤲🏻 Взять', callback_data=f'date_choose_{i.book_id}'),
                             'tat': InlineKeyboardButton('🤲🏻 Алырга', callback_data=f'date_choose_{i.book_id}')}
                     hurry = {'rus': InlineKeyboardButton('🚴‍♀️ Поторопить', callback_data=f"date_choose_{i.book_id}"),
                              'tat': InlineKeyboardButton('🚴‍♀️ Ашыктыру', callback_data=f"date_choose_{i.book_id}")}
@@ -723,7 +733,7 @@ async def main_buttons(callback_query: types.CallbackQuery, state: FSMContext):
                     count += 1
                     more = {'rus': InlineKeyboardButton('Подробнее 🧐', url=i.link),
                             'tat': InlineKeyboardButton('Тәфсилле 🧐', url=i.link)}
-                    take = {'rus': InlineKeyboardButton('🤲🏻 Взять', callback_data=f'date_choose_{i.book_id})'),
+                    take = {'rus': InlineKeyboardButton('🤲🏻 Взять', callback_data=f'date_choose_{i.book_id}'),
                             'tat': InlineKeyboardButton('🤲🏻 Алырга', callback_data=f'date_choose_{i.book_id}')}
                     hurry = {'rus': InlineKeyboardButton('🚴‍♀️ Поторопить', callback_data=f"date_choose_{i.book_id}"),
                              'tat': InlineKeyboardButton('🚴‍♀️ Ашыктыру', callback_data=f"date_choose_{i.book_id}")}
@@ -764,16 +774,19 @@ async def process_start_command(message: types.Message):
                     book.amount += 1
                     trade_info.status = "worked"
                     user = session.query(User).filter(User.tg_id == trade_info.user_id).first()
-                    c = user.xp
-                    user.xp = int(user.xp) + 5
+                    # c = user.xp
+                    # user.xp = int(user.xp) + 5
                     session.add(user)
                     session.add(trade_info)
                     session.commit()
+                    lkjh = InlineKeyboardMarkup(row_width=2).add(InlineKeyboardButton('Да ✅', callback_data='daa'),
+                                                                 InlineKeyboardButton('Нет ❌', callback_data='nno'))
                     text = {'rus': f'{user.name}, вы успешно сдали книгу {trade_info.book_name}',
                             'tat': f'{user.name}, сез китапны тапшырдыгыз {trade_info.book_name}'}
                     await bot.send_message(user.tg_id,
-                                           text[user.lang],
-                                           reply_markup=main_menu[user.lang])
+                                           text[user.lang] + '\n'
+                                                             'Вы хотите пройти тест и полчить баллы? 😏',
+                                           reply_markup=lkjh)
                     await bot.send_message(message.chat.id, f"Пользователь успешно сдал книгу {trade_info.book_name}",
                                            )
             else:
@@ -904,7 +917,7 @@ async def just_message(msg: types.Message, state: FSMContext):
                             more = {'rus': InlineKeyboardButton('Подробнее 🧐', url=i.link),
                                     'tat': InlineKeyboardButton('Тәфсилле 🧐', url=i.link)}
                             take = {
-                                'rus': InlineKeyboardButton('🤲🏻 Взять', callback_data=f'date_choose_{i.book_id})'),
+                                'rus': InlineKeyboardButton('🤲🏻 Взять', callback_data=f'date_choose_{i.book_id}'),
                                 'tat': InlineKeyboardButton('🤲🏻 Алырга', callback_data=f'date_choose_{i.book_id}')}
                             hurry = {'rus': InlineKeyboardButton('🚴‍♀️ Поторопить',
                                                                  callback_data=f"date_choose_{i.book_id}"),
@@ -915,7 +928,7 @@ async def just_message(msg: types.Message, state: FSMContext):
                             else:
                                 kl = InlineKeyboardMarkup(row_width=2).add(hurry[user.lang], more[user.lang])
                             a = await bot.send_message(msg.chat.id, str(count) + ' - '
-                                                                                                    '*Название:* ' + i.name + '\n*      Жанр:* ' + i.genre + '\n*      Автор:* ' + i.author,
+                                                                                 '*Название:* ' + i.name + '\n*      Жанр:* ' + i.genre + '\n*      Автор:* ' + i.author,
                                                        parse_mode=ParseMode.MARKDOWN, reply_markup=kl)
                             if c == 1:
                                 user.one = a.message_id
@@ -976,7 +989,7 @@ async def just_message(msg: types.Message, state: FSMContext):
                             more = {'rus': InlineKeyboardButton('Подробнее 🧐', url=i.link),
                                     'tat': InlineKeyboardButton('Тәфсилле 🧐', url=i.link)}
                             take = {
-                                'rus': InlineKeyboardButton('🤲🏻 Взять', callback_data=f'date_choose_{i.book_id})'),
+                                'rus': InlineKeyboardButton('🤲🏻 Взять', callback_data=f'date_choose_{i.book_id}'),
                                 'tat': InlineKeyboardButton('🤲🏻 Алырга', callback_data=f'date_choose_{i.book_id}')}
                             hurry = {'rus': InlineKeyboardButton('🚴‍♀️ Поторопить',
                                                                  callback_data=f"date_choose_{i.book_id}"),
@@ -987,7 +1000,7 @@ async def just_message(msg: types.Message, state: FSMContext):
                             else:
                                 kl = InlineKeyboardMarkup(row_width=2).add(hurry[user.lang], more[user.lang])
                             a = await bot.send_message(msg.chat.id, str(count) + ' - '
-                                                                                                    '*Название:* ' + i.name + '\n*      Жанр:* ' + i.genre + '\n*      Автор:* ' + i.author,
+                                                                                 '*Название:* ' + i.name + '\n*      Жанр:* ' + i.genre + '\n*      Автор:* ' + i.author,
                                                        parse_mode=ParseMode.MARKDOWN, reply_markup=kl)
                             # async with state.proxy() as data:
                             #     data[str(count - (page - 1) * 3)] = a.message_id
@@ -1014,7 +1027,7 @@ async def just_message(msg: types.Message, state: FSMContext):
                     more = {'rus': InlineKeyboardButton('Подробнее 🧐', url=books.link),
                             'tat': InlineKeyboardButton('Тәфсилле 🧐', url=books.link)}
                     take = {
-                        'rus': InlineKeyboardButton('🤲🏻 Взять', callback_data=f'date_choose_{books.book_id})'),
+                        'rus': InlineKeyboardButton('🤲🏻 Взять', callback_data=f'date_choose_{books.book_id}'),
                         'tat': InlineKeyboardButton('🤲🏻 Алырга', callback_data=f'date_choose_{books.book_id}')}
                     hurry = {'rus': InlineKeyboardButton('🚴‍♀️ Поторопить',
                                                          callback_data=f"date_choose_{books.book_id}"),
